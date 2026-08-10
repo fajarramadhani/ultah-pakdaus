@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import styles from './Chapter0Preshow.module.css';
 import ParticleLayer from '../ui/ParticleLayer';
 import { siteConfig } from '../../config/site.config';
+import { createBirthdayWish } from '../../services/birthday-wishes';
+import type { WishGroup } from '../../config/wishes.data';
 
 interface Chapter0PreshowProps {
   onStart: (withMusic: boolean) => void;
@@ -10,6 +12,14 @@ interface Chapter0PreshowProps {
 }
 
 const ambientWords = ['PEMIMPIN', 'PANUTAN', 'SAHABAT', 'AYAH'];
+
+const COMPANY_OPTIONS = [
+  'ARDANA PERKASA GROUP',
+  'PT BUANA PERKASA RAJANEGARA',
+  'PT DWI KUSUMA PERKASA',
+  'PT CARAKA MULIA',
+  'LAINNYA',
+];
 
 export default function Chapter0Preshow({
   onStart,
@@ -20,6 +30,19 @@ export default function Chapter0Preshow({
   const [wordIndex, setWordIndex] = useState(0);
   const [wordVisible, setWordVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
+
+  // Modal & Toast State for Sending Wish directly from Pre-show
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Form Fields
+  const [formName, setFormName] = useState('');
+  const [formCompanySelect, setFormCompanySelect] = useState('');
+  const [formCustomCompany, setFormCustomCompany] = useState('');
+  const [formGroupSelect, setFormGroupSelect] = useState<WishGroup>('Tim & Karyawan');
+  const [formMessage, setFormMessage] = useState('');
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -47,7 +70,8 @@ export default function Chapter0Preshow({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
+        e.target instanceof HTMLTextAreaElement ||
+        isModalOpen
       )
         return;
 
@@ -58,7 +82,61 @@ export default function Chapter0Preshow({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleStart]);
+  }, [handleStart, isModalOpen]);
+
+  // Handle Form Submission directly on Pre-show
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formName.trim()) {
+      newErrors.name = 'Nama lengkap wajib diisi.';
+    }
+    if (!formCompanySelect) {
+      newErrors.company = 'Perusahaan / Jabatan wajib dipilih.';
+    } else if (formCompanySelect === 'LAINNYA' && !formCustomCompany.trim()) {
+      newErrors.customCompany = 'Nama perusahaan manual wajib diisi.';
+    }
+    if (!formMessage.trim()) {
+      newErrors.message = 'Ucapan dan doa terbaik wajib diisi.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors(newErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    const finalCompany =
+      formCompanySelect === 'LAINNYA' ? formCustomCompany.trim() : formCompanySelect;
+
+    try {
+      await createBirthdayWish({
+        name: formName.trim(),
+        company: finalCompany,
+        message: formMessage.trim(),
+        group_name: formGroupSelect,
+      });
+
+      setIsModalOpen(false);
+
+      // Reset form
+      setFormName('');
+      setFormCompanySelect('');
+      setFormCustomCompany('');
+      setFormMessage('');
+      setFormErrors({});
+
+      setToastMessage('Terima kasih! Ucapan & doa Anda telah berhasil dikirim.');
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err: unknown) {
+      console.error(err);
+      const errMsg = err instanceof Error ? err.message : 'Gagal mengirim ucapan.';
+      setFormErrors({ submit: errMsg });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const { person } = siteConfig;
 
@@ -78,93 +156,79 @@ export default function Chapter0Preshow({
       <div className={styles.ambientWordArea} aria-hidden="true">
         <span
           className={`${styles.ambientWord} ${
-            wordVisible ? styles.ambientWordIn : styles.ambientWordOut
+            wordVisible ? styles.ambientWordVisible : ''
           }`}
         >
           {ambientWords[wordIndex]}
         </span>
       </div>
 
-      {/* Champagne Particles */}
-      {siteConfig.features.particles && (
-        <ParticleLayer count={12} color="champagne" intensity="subtle" />
+      <ParticleLayer count={35} color="champagne" intensity="subtle" />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={styles.toast}>
+          <span className={styles.toastIcon}>✨</span>
+          <span>{toastMessage}</span>
+        </div>
       )}
 
-      {/* Top-Left APG Logo Header */}
-      <div className={styles.topLeftLogo}>
-        <div className={styles.logoBadge}>
-          <img
-            src="/assets/apg-logo.jpg"
-            alt="Logo APG"
-            className={styles.apgLogoImg}
-          />
-        </div>
+      {/* TOP APG BADGE — Top Left Corner */}
+      <div className={styles.apgTopBadge}>
+        <img
+          src="/assets/apg-logo.jpg"
+          alt="APG Logo"
+          className={styles.apgLogoImg}
+        />
       </div>
 
-      {/* Top-Right Icon Toolbar (Audio Soundtrack Toggle + Fullscreen) */}
-      <div className={styles.topRightControls}>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${
-            audioMode === 'with' ? styles.iconBtnActive : ''
-          }`}
-          onClick={() =>
-            setAudioMode((prev) => (prev === 'with' ? 'without' : 'with'))
-          }
-          aria-label={
-            audioMode === 'with' ? 'Soundtrack aktif' : 'Soundtrack nonaktif'
-          }
-          title={
-            audioMode === 'with' ? 'Soundtrack aktif' : 'Soundtrack nonaktif'
-          }
-        >
-          {audioMode === 'with' ? (
-            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-              <path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 19L19 20.27 20.27 19 5.27 4 4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-            </svg>
-          )}
-          {audioMode === 'with' && (
-            <span className={styles.soundDot} aria-hidden="true" />
-          )}
-        </button>
+      {/* Sound & Fullscreen Controls — Top Right Corner */}
+      <div className={styles.topControls}>
+        <div className={styles.soundSelector}>
+          <button
+            type="button"
+            className={`${styles.soundOption} ${
+              audioMode === 'with' ? styles.soundActive : ''
+            }`}
+            onClick={() => setAudioMode('with')}
+            aria-label="Soundtrack Aktif"
+          >
+            <span>♪ DENGAN MUSIK</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.soundOption} ${
+              audioMode === 'without' ? styles.soundActive : ''
+            }`}
+            onClick={() => setAudioMode('without')}
+            aria-label="Tanpa Musik"
+          >
+            <span>TANPA MUSIK</span>
+          </button>
+        </div>
 
         {onToggleFullscreen && (
           <button
             type="button"
-            className={styles.iconBtn}
+            className={styles.fsBtn}
             onClick={onToggleFullscreen}
-            aria-label={isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'}
-            title={isFullscreen ? 'Keluar Layar Penuh (F)' : 'Layar Penuh (F)'}
+            aria-label={isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}
+            title={isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}
           >
-            {isFullscreen ? (
-              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-              </svg>
-            )}
+            {isFullscreen ? '⤢' : '⤢'}
           </button>
         )}
       </div>
 
-      {/* Main Split Grid Container */}
-      <div className={styles.container}>
-        {/* Left Column — Editorial Identity Content */}
+      {/* Main Content Layout Container */}
+      <div className={styles.contentContainer}>
+        {/* Left Column — Editorial Typography & CTA */}
         <div className={styles.leftCol}>
-
-          {/* Tribute Eyebrow & Date */}
+          {/* Eyebrow Label */}
           <div className={styles.eyebrow}>
-            <span>A BIRTHDAY PORTRAIT</span>
-            <span className={styles.eyebrowDot} aria-hidden="true">
-              ·
-            </span>
-            <span>10-08-2026</span>
+            <span className={styles.eyebrowDot} aria-hidden="true" />
+            <span>A BIRTHDAY PORTRAIT · 10-08-2026</span>
           </div>
 
           {/* MAIN HEADLINE NAME — TEKS TERBESAR & PALING DOMINAN */}
@@ -182,26 +246,37 @@ export default function Chapter0Preshow({
             berbeda bagi setiap orang.
           </p>
 
-          {/* Primary CTA Button & Keyboard Hint */}
+          {/* CTA Buttons & Hint */}
           <div className={styles.ctaGroup}>
-            <button
-              type="button"
-              id="btn-start-experience"
-              className={styles.btnPrimary}
-              onClick={handleStart}
-              aria-label="Saksikan Persembahan"
-            >
-              <span>SAKSIKAN PERSEMBAHAN</span>
-              <span className={styles.arrowCircle} aria-hidden="true">
-                →
-              </span>
-            </button>
+            <div className={styles.btnRow}>
+              <button
+                type="button"
+                id="btn-start-experience"
+                className={styles.btnPrimary}
+                onClick={handleStart}
+                aria-label="Saksikan Persembahan"
+              >
+                <span>SAKSIKAN PERSEMBAHAN</span>
+                <span className={styles.arrowCircle} aria-hidden="true">
+                  →
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setIsModalOpen(true)}
+                aria-label="Kirim Ucapan dan Doa"
+              >
+                <span>✍️ KIRIM UCAPAN & DOA</span>
+              </button>
+            </div>
 
             <div className={styles.enterHint}>ENTER · BUKA PERSEMBAHAN</div>
           </div>
         </div>
 
-        {/* Right Column — Hero Portrait seamlessly integrated with background */}
+        {/* Right Column — Hero Portrait */}
         <div className={styles.rightCol}>
           <div className={styles.portraitWrapper}>
             <img
@@ -219,6 +294,147 @@ export default function Chapter0Preshow({
           </div>
         </div>
       </div>
+
+      {/* Greeting Form Modal on Pre-show */}
+      {isModalOpen && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Kirim Ucapan Ulang Tahun"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsModalOpen(false);
+          }}
+        >
+          <div className={styles.modalContainer}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleArea}>
+                <span className={styles.modalHeaderIcon}>💖</span>
+                <h3>Kirim Ucapan & Doa</h3>
+              </div>
+              <button
+                className={styles.modalCloseBtn}
+                onClick={() => setIsModalOpen(false)}
+                aria-label="Tutup modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleFormSubmit} className={styles.modalForm}>
+              {formErrors.submit && (
+                <div className={styles.errorBanner}>{formErrors.submit}</div>
+              )}
+
+              <div className={styles.formField}>
+                <label htmlFor="preshow-name">Nama Lengkap *</label>
+                <input
+                  id="preshow-name"
+                  type="text"
+                  placeholder="Masukkan nama Anda"
+                  value={formName}
+                  onChange={(e) => {
+                    setFormName(e.target.value);
+                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                />
+                {formErrors.name && <span className={styles.errorText}>{formErrors.name}</span>}
+              </div>
+
+              <div className={styles.formField}>
+                <label htmlFor="preshow-company">Perusahaan / Jabatan *</label>
+                <select
+                  id="preshow-company"
+                  value={formCompanySelect}
+                  onChange={(e) => {
+                    setFormCompanySelect(e.target.value);
+                    if (formErrors.company) setFormErrors((prev) => ({ ...prev, company: '' }));
+                  }}
+                >
+                  <option value="">-- Pilih Perusahaan / Jabatan --</option>
+                  {COMPANY_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.company && (
+                  <span className={styles.errorText}>{formErrors.company}</span>
+                )}
+              </div>
+
+              {formCompanySelect === 'LAINNYA' && (
+                <div className={styles.formField}>
+                  <label htmlFor="preshow-custom-company">Nama Perusahaan Manual *</label>
+                  <input
+                    id="preshow-custom-company"
+                    type="text"
+                    placeholder="Masukkan nama perusahaan Anda"
+                    value={formCustomCompany}
+                    onChange={(e) => {
+                      setFormCustomCompany(e.target.value);
+                      if (formErrors.customCompany)
+                        setFormErrors((prev) => ({ ...prev, customCompany: '' }));
+                    }}
+                  />
+                  {formErrors.customCompany && (
+                    <span className={styles.errorText}>{formErrors.customCompany}</span>
+                  )}
+                </div>
+              )}
+
+              <div className={styles.formField}>
+                <label htmlFor="preshow-group">Kelompok *</label>
+                <select
+                  id="preshow-group"
+                  value={formGroupSelect}
+                  onChange={(e) => setFormGroupSelect(e.target.value as WishGroup)}
+                >
+                  <option value="Direksi">Direksi</option>
+                  <option value="Tim & Karyawan">Tim & Karyawan</option>
+                  <option value="Rekan & Sahabat">Rekan & Sahabat</option>
+                  <option value="Keluarga">Keluarga</option>
+                </select>
+              </div>
+
+              <div className={styles.formField}>
+                <label htmlFor="preshow-message">Ucapan & Doa Terbaik *</label>
+                <textarea
+                  id="preshow-message"
+                  rows={4}
+                  placeholder="Tuliskan ucapan dan doa terbaik Anda untuk Pak Firdaus..."
+                  value={formMessage}
+                  onChange={(e) => {
+                    setFormMessage(e.target.value);
+                    if (formErrors.message)
+                      setFormErrors((prev) => ({ ...prev, message: '' }));
+                  }}
+                />
+                {formErrors.message && (
+                  <span className={styles.errorText}>{formErrors.message}</span>
+                )}
+              </div>
+
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.btnCancel}
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className={styles.btnSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Mengirim...' : 'Kirim Ucapan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
