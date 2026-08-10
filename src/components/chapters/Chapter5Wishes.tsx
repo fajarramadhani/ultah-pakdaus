@@ -82,15 +82,45 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
     setTimeout(() => setMounted(true), 100);
     loadSupabaseWishes();
 
+    const handleNewWishEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<Wish>;
+      if (customEvent.detail) {
+        const newWish = customEvent.detail;
+        setWishesList((prev) => {
+          const exists = prev.some(
+            (w) =>
+              w.id === newWish.id ||
+              (w.name.trim().toLowerCase() === newWish.name.trim().toLowerCase() &&
+                w.quote.trim().toLowerCase() === newWish.quote.trim().toLowerCase())
+          );
+          if (exists) return prev;
+          return [newWish, ...prev];
+        });
+      }
+    };
+
+    window.addEventListener('mf_new_wish', handleNewWishEvent);
+    window.addEventListener('storage', loadSupabaseWishes);
+
     // Subscribe to realtime Supabase changes
     const unsubscribe = subscribeToBirthdayWishes((newWish) => {
       setWishesList((prev) => {
-        if (prev.some((w) => w.id === newWish.id)) return prev;
+        const exists = prev.some(
+          (w) =>
+            w.id === newWish.id ||
+            (w.name.trim().toLowerCase() === newWish.name.trim().toLowerCase() &&
+              w.quote.trim().toLowerCase() === newWish.quote.trim().toLowerCase())
+        );
+        if (exists) return prev;
         return [newWish, ...prev];
       });
     });
 
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener('mf_new_wish', handleNewWishEvent);
+      window.removeEventListener('storage', loadSupabaseWishes);
+      unsubscribe();
+    };
   }, []);
 
   const filteredWishes = wishesList;

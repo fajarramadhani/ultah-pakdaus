@@ -50,9 +50,18 @@ export function formatSupabaseWish(record: SupabaseWish): Wish {
 }
 
 /**
+ * Custom Event Dispatcher for instant cross-component UI updates
+ */
+export function broadcastNewWish(wish: Wish) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("mf_new_wish", { detail: wish }));
+  }
+}
+
+/**
  * Local storage helpers
  */
-function getLocalWishes(): Wish[] {
+export function getLocalWishes(): Wish[] {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
@@ -61,10 +70,13 @@ function getLocalWishes(): Wish[] {
   }
 }
 
-function saveLocalWish(wish: Wish): void {
+export function saveLocalWish(wish: Wish): void {
   try {
     const prev = getLocalWishes();
-    const updated = [wish, ...prev.filter((w) => w.id !== wish.id)];
+    const filtered = prev.filter(
+      (w) => w.id !== wish.id && !(w.name === wish.name && w.quote === wish.quote)
+    );
+    const updated = [wish, ...filtered];
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {
     console.error("Failed to save local wish backup:", e);
@@ -72,7 +84,7 @@ function saveLocalWish(wish: Wish): void {
 }
 
 /**
- * Fetch all birthday wishes from Supabase database
+ * Fetch all birthday wishes from Supabase database & merge local backups
  */
 export async function getBirthdayWishes(): Promise<Wish[]> {
   const localWishes = getLocalWishes();
@@ -96,9 +108,11 @@ export async function getBirthdayWishes(): Promise<Wish[]> {
 
     const fetchedRemote = (data || []).map((item) => formatSupabaseWish(item as SupabaseWish));
     
-    // Merge remote and local entries uniquely by ID
-    const remoteIds = new Set(fetchedRemote.map((w) => w.id));
-    const uniqueLocal = localWishes.filter((w) => !remoteIds.has(w.id));
+    // Merge remote and local entries deduplicated by name and quote content
+    const remoteKeys = new Set(fetchedRemote.map((w) => `${w.name.trim().toLowerCase()}::${w.quote.trim().toLowerCase()}`));
+    const uniqueLocal = localWishes.filter(
+      (w) => !remoteKeys.has(`${w.name.trim().toLowerCase()}::${w.quote.trim().toLowerCase()}`)
+    );
 
     return [...fetchedRemote, ...uniqueLocal];
   } catch (err) {
@@ -108,15 +122,15 @@ export async function getBirthdayWishes(): Promise<Wish[]> {
 }
 
 /**
- * Insert a new birthday wish into Supabase database
+ * Insert a new birthday wish into Supabase database with local fallback
  */
 export async function createBirthdayWish(input: CreateWishInput): Promise<Wish> {
   const cleanName = input.name.trim();
   const cleanCompany = `${input.company.trim()} (${input.group_name})`;
   const cleanMessage = input.message.trim();
 
-  const newWishItem: Wish = {
-    id: `local-${Date.now()}`,
+  const tempWishItem: Wish = {
+    id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     name: cleanName,
     role: input.company.trim(),
     group: input.group_name,
@@ -125,12 +139,15 @@ export async function createBirthdayWish(input: CreateWishInput): Promise<Wish> 
     isHighlight: false,
   };
 
-  // Save to local backup first to guarantee zero user data loss
-  saveLocalWish(newWishItem);
+  // 1. Save to local storage first
+  saveLocalWish(tempWishItem);
+  
+  // 2. Broadcast custom event for instant UI update on Chapter 5
+  broadcastNewWish(tempWishItem);
 
   const client = supabase;
   if (!client) {
-    return newWishItem;
+    return tempWishItem;
   }
 
   try {
@@ -147,16 +164,17 @@ export async function createBirthdayWish(input: CreateWishInput): Promise<Wish> 
       .single();
 
     if (error) {
-      console.warn("Supabase insert notice (fallback to local state):", error.message);
-      return newWishItem;
+      console.warn("Supabase insert notice (wish kept in local storage):", error.message);
+      return tempWishItem;
     }
 
     const createdWish = formatSupabaseWish(data as SupabaseWish);
     saveLocalWish(createdWish);
+    broadcastNewWish(createdWish);
     return createdWish;
   } catch (err) {
-    console.warn("Failed inserting into Supabase, wish saved locally:", err);
-    return newWishItem;
+    console.warn("Failed inserting into Supabase, wish kept in local storage:", err);
+    return tempWishItem;
   }
 }
 
@@ -174,7 +192,10 @@ export function subscribeToBirthdayWishes(onNewWish: (wish: Wish) => void): () =
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLE_NAME },
         (payload) => {
-          if (payload.new) onNewWish(formatSupabaseWish(payload.new as SupabaseWish));
+          if (payload.new) {
+            const formatted = formatSupabaseWish(payload.new as SupabaseWish);
+            onNewWish(formatted);
+          }
         }
       )
       .subscribe();
