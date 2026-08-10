@@ -112,7 +112,7 @@ export const siteConfig: SiteConfig = {
     particles: true,
     parallax: true,
     ambientLoop: false,
-    persistChapter: true,
+    persistChapter: false,
   },
 };
 

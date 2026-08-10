@@ -18,13 +18,12 @@ import Chapter7Closing from '../chapters/Chapter7Closing';
 import ControlBar from '../ui/ControlBar';
 
 export default function PresentationShell() {
-  const [chapter, setChapter] = useState<number>(() => {
-    if (siteConfig.features.persistChapter) {
-      const saved = localStorage.getItem('mf_chapter');
-      return saved ? Math.min(Math.max(parseInt(saved, 10), 0), CHAPTER_COUNT - 1) : 0;
-    }
-    return 0;
-  });
+  const [chapter, setChapter] = useState<number>(0);
+
+  useEffect(() => {
+    // Always start at Chapter 0 Preshow when visiting the site
+    localStorage.removeItem('mf_chapter');
+  }, []);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
