@@ -552,6 +552,9 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                   controls
                   playsInline
                   autoPlay
+                  onPlay={() => onOverlayOpen?.()}
+                  onPause={() => onOverlayClose?.()}
+                  onEnded={() => onOverlayClose?.()}
                 />
               )}
 
@@ -561,6 +564,9 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                   className={styles.overlayAudio}
                   controls
                   autoPlay
+                  onPlay={() => onOverlayOpen?.()}
+                  onPause={() => onOverlayClose?.()}
+                  onEnded={() => onOverlayClose?.()}
                 />
               )}
 

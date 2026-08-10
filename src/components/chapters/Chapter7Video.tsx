@@ -97,6 +97,9 @@ export default function Chapter7Video({ onOverlayOpen, onOverlayClose }: Chapter
                   controls
                   playsInline
                   className={styles.localVideo}
+                  onPlay={() => onOverlayOpen?.()}
+                  onPause={() => onOverlayClose?.()}
+                  onEnded={() => onOverlayClose?.()}
                 />
               </div>
             )}
