@@ -76,7 +76,7 @@ export const siteConfig: SiteConfig = {
     heroPhoto: '/assets/firdaus/hero.jpeg',
     heroPhotoPosition: '50% 20%',
     heroPhotoPositionMobile: '50% 15%',
-    tributeVideoUrl: 'https://drive.google.com/file/d/1ABC_EXAMPLE_ID/view?usp=sharing',
+    tributeVideoUrl: 'https://drive.google.com/file/d/12oGgZqQrPtKb_ZV3G9SpNTsTh23AatQB/view?usp=sharing',
   },
 
   presentation: {
