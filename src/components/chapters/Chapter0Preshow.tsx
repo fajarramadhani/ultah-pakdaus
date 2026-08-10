@@ -26,7 +26,6 @@ export default function Chapter0Preshow({
   onToggleFullscreen,
   isFullscreen,
 }: Chapter0PreshowProps) {
-  const [audioMode, setAudioMode] = useState<'with' | 'without'>('with');
   const [wordIndex, setWordIndex] = useState(0);
   const [wordVisible, setWordVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -62,8 +61,8 @@ export default function Chapter0Preshow({
   }, []);
 
   const handleStart = useCallback(() => {
-    onStart(audioMode === 'with');
-  }, [onStart, audioMode]);
+    onStart(true);
+  }, [onStart]);
 
   // Global Enter & Space key listener
   useEffect(() => {
@@ -184,32 +183,8 @@ export default function Chapter0Preshow({
         </div>
       </div>
 
-      {/* Sound & Fullscreen Controls — Fixed Top-Right Corner */}
+      {/* Fullscreen Controls — Fixed Top-Right Corner */}
       <div className={styles.topRightControls}>
-        <div className={styles.soundSelector}>
-          <button
-            type="button"
-            className={`${styles.soundOption} ${
-              audioMode === 'with' ? styles.soundActive : ''
-            }`}
-            onClick={() => setAudioMode('with')}
-            aria-label="Soundtrack Aktif"
-          >
-            <span>♪ DENGAN MUSIK</span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.soundOption} ${
-              audioMode === 'without' ? styles.soundActive : ''
-            }`}
-            onClick={() => setAudioMode('without')}
-            aria-label="Tanpa Musik"
-          >
-            <span>TANPA MUSIK</span>
-          </button>
-        </div>
-
         {onToggleFullscreen && (
           <button
             type="button"
