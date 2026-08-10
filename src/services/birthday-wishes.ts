@@ -18,9 +18,10 @@ export interface CreateWishInput {
 }
 
 const TABLE_NAME = "birthday_wishes";
+const LOCAL_STORAGE_KEY = "mf_birthday_wishes_backup";
 
 /**
- * Convert Supabase record to Wish format
+ * Format Supabase record to Wish UI model
  */
 export function formatSupabaseWish(record: SupabaseWish): Wish {
   let group: WishGroup = (record.group_name as WishGroup) || "Tim & Karyawan";
@@ -49,61 +50,114 @@ export function formatSupabaseWish(record: SupabaseWish): Wish {
 }
 
 /**
+ * Local storage helpers
+ */
+function getLocalWishes(): Wish[] {
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalWish(wish: Wish): void {
+  try {
+    const prev = getLocalWishes();
+    const updated = [wish, ...prev.filter((w) => w.id !== wish.id)];
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Failed to save local wish backup:", e);
+  }
+}
+
+/**
  * Fetch all birthday wishes from Supabase database
  */
 export async function getBirthdayWishes(): Promise<Wish[]> {
+  const localWishes = getLocalWishes();
+
   const client = supabase;
   if (!client) {
-    console.warn("Supabase client not initialized.");
-    return [];
+    return localWishes;
   }
 
-  const { data, error } = await client
-    .from(TABLE_NAME)
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(300);
+  try {
+    const { data, error } = await client
+      .from(TABLE_NAME)
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(300);
 
-  if (error) {
-    console.error("Supabase fetch error:", error);
-    return [];
+    if (error) {
+      console.warn("Supabase fetch notice:", error.message);
+      return localWishes;
+    }
+
+    const fetchedRemote = (data || []).map((item) => formatSupabaseWish(item as SupabaseWish));
+    
+    // Merge remote and local entries uniquely by ID
+    const remoteIds = new Set(fetchedRemote.map((w) => w.id));
+    const uniqueLocal = localWishes.filter((w) => !remoteIds.has(w.id));
+
+    return [...fetchedRemote, ...uniqueLocal];
+  } catch (err) {
+    console.error("Error fetching wishes:", err);
+    return localWishes;
   }
-
-  return (data || []).map((item) => formatSupabaseWish(item as SupabaseWish));
 }
 
 /**
  * Insert a new birthday wish into Supabase database
  */
 export async function createBirthdayWish(input: CreateWishInput): Promise<Wish> {
-  const client = supabase;
-  if (!client) {
-    throw new Error("Koneksi Supabase belum siap.");
-  }
-
   const cleanName = input.name.trim();
   const cleanCompany = `${input.company.trim()} (${input.group_name})`;
   const cleanMessage = input.message.trim();
 
-  // Insert standard fields (name, company, message) into birthday_wishes table
-  const { data, error } = await client
-    .from(TABLE_NAME)
-    .insert([
-      {
-        name: cleanName,
-        company: cleanCompany,
-        message: cleanMessage,
-      },
-    ])
-    .select("*")
-    .single();
+  const newWishItem: Wish = {
+    id: `local-${Date.now()}`,
+    name: cleanName,
+    role: input.company.trim(),
+    group: input.group_name,
+    quote: cleanMessage,
+    mediaType: "text-only",
+    isHighlight: false,
+  };
 
-  if (error) {
-    console.error("Supabase insert error:", error);
-    throw new Error(error.message || "Gagal menyimpan ucapan ke database Supabase.");
+  // Save to local backup first to guarantee zero user data loss
+  saveLocalWish(newWishItem);
+
+  const client = supabase;
+  if (!client) {
+    return newWishItem;
   }
 
-  return formatSupabaseWish(data as SupabaseWish);
+  try {
+    const { data, error } = await client
+      .from(TABLE_NAME)
+      .insert([
+        {
+          name: cleanName,
+          company: cleanCompany,
+          message: cleanMessage,
+        },
+      ])
+      .select("*")
+      .single();
+
+    if (error) {
+      console.warn("Supabase insert notice (fallback to local state):", error.message);
+      return newWishItem;
+    }
+
+    const createdWish = formatSupabaseWish(data as SupabaseWish);
+    saveLocalWish(createdWish);
+    return createdWish;
+  } catch (err) {
+    console.warn("Failed inserting into Supabase, wish saved locally:", err);
+    return newWishItem;
+  }
 }
 
 /**
@@ -113,18 +167,22 @@ export function subscribeToBirthdayWishes(onNewWish: (wish: Wish) => void): () =
   const client = supabase;
   if (!client) return () => {};
 
-  const channel = client
-    .channel("public-realtime-wishes")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: TABLE_NAME },
-      (payload) => {
-        if (payload.new) onNewWish(formatSupabaseWish(payload.new as SupabaseWish));
-      }
-    )
-    .subscribe();
+  try {
+    const channel = client
+      .channel("public-realtime-wishes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: TABLE_NAME },
+        (payload) => {
+          if (payload.new) onNewWish(formatSupabaseWish(payload.new as SupabaseWish));
+        }
+      )
+      .subscribe();
 
-  return () => {
-    client.removeChannel(channel);
-  };
+    return () => {
+      client.removeChannel(channel);
+    };
+  } catch {
+    return () => {};
+  }
 }
