@@ -156,7 +156,7 @@ export default function Chapter0Preshow({
       <div className={styles.ambientWordArea} aria-hidden="true">
         <span
           className={`${styles.ambientWord} ${
-            wordVisible ? styles.ambientWordVisible : ''
+            wordVisible ? styles.ambientWordIn : styles.ambientWordOut
           }`}
         >
           {ambientWords[wordIndex]}
@@ -173,17 +173,19 @@ export default function Chapter0Preshow({
         </div>
       )}
 
-      {/* TOP APG BADGE — Top Left Corner */}
-      <div className={styles.apgTopBadge}>
-        <img
-          src="/assets/apg-logo.jpg"
-          alt="APG Logo"
-          className={styles.apgLogoImg}
-        />
+      {/* TOP APG BADGE — Fixed Top-Left Corner */}
+      <div className={styles.topLeftLogo}>
+        <div className={styles.logoBadge}>
+          <img
+            src="/assets/apg-logo.jpg"
+            alt="APG Logo"
+            className={styles.apgLogoImg}
+          />
+        </div>
       </div>
 
-      {/* Sound & Fullscreen Controls — Top Right Corner */}
-      <div className={styles.topControls}>
+      {/* Sound & Fullscreen Controls — Fixed Top-Right Corner */}
+      <div className={styles.topRightControls}>
         <div className={styles.soundSelector}>
           <button
             type="button"
@@ -222,7 +224,7 @@ export default function Chapter0Preshow({
       </div>
 
       {/* Main Content Layout Container */}
-      <div className={styles.contentContainer}>
+      <div className={styles.container}>
         {/* Left Column — Editorial Typography & CTA */}
         <div className={styles.leftCol}>
           {/* Eyebrow Label */}
