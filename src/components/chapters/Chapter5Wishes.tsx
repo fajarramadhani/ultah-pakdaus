@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from './Chapter5Wishes.module.css';
-import { wishes as initialWishes, ALL_GROUPS, type WishGroup, type Wish } from '../../config/wishes.data';
+import { ALL_GROUPS, type WishGroup, type Wish } from '../../config/wishes.data';
+import { getBirthdayWishes, createBirthdayWish, subscribeToBirthdayWishes } from '../../services/birthday-wishes';
 
 interface Chapter5WishesProps {
   onOverlayOpen?: () => void;
@@ -37,7 +38,7 @@ function getInitials(name: string): string {
 
 function getGradient(name: string): string {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
+  for (let i = 0; i < (name || '').length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const index = Math.abs(hash) % AVATAR_GRADIENTS.length;
@@ -45,7 +46,8 @@ function getGradient(name: string): string {
 }
 
 export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapter5WishesProps) {
-  const [wishesList, setWishesList] = useState<Wish[]>(initialWishes);
+  const [wishesList, setWishesList] = useState<Wish[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeGroup, setActiveGroup] = useState<WishGroup | 'Semua'>('Semua');
   const [visibleCount, setVisibleCount] = useState<number>(ITEMS_PER_PAGE);
   const [selectedWish, setSelectedWish] = useState<Wish | null>(null);
@@ -64,8 +66,32 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Load live data from Supabase
+  const loadSupabaseWishes = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getBirthdayWishes();
+      setWishesList(data);
+    } catch (err) {
+      console.error('Error fetching wishes:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     setTimeout(() => setMounted(true), 100);
+    loadSupabaseWishes();
+
+    // Subscribe to realtime Supabase changes
+    const unsubscribe = subscribeToBirthdayWishes((newWish) => {
+      setWishesList((prev) => {
+        if (prev.some((w) => w.id === newWish.id)) return prev;
+        return [newWish, ...prev];
+      });
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const filteredWishes =
@@ -93,8 +119,8 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
     onOverlayClose?.();
   };
 
-  // Form submission handling
-  const handleFormSubmit = (e: React.FormEvent) => {
+  // Form submission handling to Supabase
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: { [key: string]: string } = {};
 
@@ -119,19 +145,15 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
     const finalCompany =
       formCompanySelect === 'LAINNYA' ? formCustomCompany.trim() : formCompanySelect;
 
-    setTimeout(() => {
-      const newWishItem: Wish = {
-        id: `w-custom-${Date.now()}`,
+    try {
+      const createdWish = await createBirthdayWish({
         name: formName.trim(),
-        role: finalCompany,
-        group: formGroupSelect,
-        quote: formMessage.trim(),
-        mediaType: 'text-only',
-        isHighlight: false,
-      };
+        company: finalCompany,
+        message: formMessage.trim(),
+        group_name: formGroupSelect,
+      });
 
-      setWishesList((prev) => [newWishItem, ...prev]);
-      setIsSubmitting(false);
+      setWishesList((prev) => [createdWish, ...prev]);
       setIsModalOpen(false);
 
       // Reset form
@@ -141,10 +163,15 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
       setFormMessage('');
       setFormErrors({});
 
-      // Toast feedback
-      setToastMessage('Terima kasih! Ucapan Anda telah berhasil dikirim.');
-      setTimeout(() => setToastMessage(null), 4000);
-    }, 600);
+      setToastMessage('Terima kasih! Ucapan Anda telah dikirim dan dapat dilihat oleh publik.');
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err: unknown) {
+      console.error(err);
+      const errMsg = err instanceof Error ? err.message : 'Gagal mengirim ucapan.';
+      setFormErrors({ submit: errMsg });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -160,27 +187,39 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
       )}
 
       <div className={styles.inner}>
-        {/* Header Section (Matching Pak Ari format) */}
+        {/* Header Section */}
         <div className={styles.header}>
           <div className={styles.headerTop}>
             <div className={styles.badgePill}>
               <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-              <span>Kumpulan Doa & Harapan</span>
+              <span>Kumpulan Doa & Harapan (Live Database)</span>
             </div>
 
-            <button
-              className={styles.btnSubmitWish}
-              onClick={() => setIsModalOpen(true)}
-            >
-              <span>✨ Kirim Ucapan Saya</span>
-            </button>
+            <div className={styles.headerActions}>
+              <a
+                href="#/ucapan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.btnPublicLink}
+                title="Buka Halaman Ucapan Publik Terpisah"
+              >
+                <span>🔗 Link Publik Ucapan</span>
+              </a>
+
+              <button
+                className={styles.btnSubmitWish}
+                onClick={() => setIsModalOpen(true)}
+              >
+                <span>✨ Kirim Ucapan Saya</span>
+              </button>
+            </div>
           </div>
 
           <h2 className={styles.title}>Ucapan dan Doa Terbaik</h2>
           <p className={styles.subtitle}>
-            Kumpulan ucapan dari keluarga besar perusahaan untuk Bapak Muhammad Firdaus.
+            Kumpulan ucapan real-time dari keluarga besar dan publik untuk Bapak Muhammad Firdaus.
           </p>
         </div>
 
@@ -195,106 +234,120 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
               setVisibleCount(ITEMS_PER_PAGE);
             }}
           >
-            Semua
+            Semua ({wishesList.length})
           </button>
-          {ALL_GROUPS.map((g) => (
-            <button
-              key={g}
-              role="tab"
-              aria-selected={activeGroup === g}
-              className={`${styles.filterBtn} ${activeGroup === g ? styles.filterActive : ''}`}
-              onClick={() => {
-                setActiveGroup(g);
-                setVisibleCount(ITEMS_PER_PAGE);
-              }}
-            >
-              {g}
-            </button>
-          ))}
+          {ALL_GROUPS.map((g) => {
+            const count = wishesList.filter((w) => w.group === g).length;
+            return (
+              <button
+                key={g}
+                role="tab"
+                aria-selected={activeGroup === g}
+                className={`${styles.filterBtn} ${activeGroup === g ? styles.filterActive : ''}`}
+                onClick={() => {
+                  setActiveGroup(g);
+                  setVisibleCount(ITEMS_PER_PAGE);
+                }}
+              >
+                {g} {count > 0 ? `(${count})` : ''}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Wishes Grid (Format GreetingCard Pak Ari) */}
+        {/* Wishes Grid */}
         <div className={`${styles.gridContainer} chapter-scroll`}>
-          <div className={styles.grid}>
-            {visibleGreetings.map((wish, i) => {
-              const initials = getInitials(wish.name);
-              const avatarGrad = getGradient(wish.name);
+          {isLoading ? (
+            <div className={styles.loadingSkeletonArea}>
+              {[1, 2, 3].map((idx) => (
+                <div key={idx} className={styles.skeletonCard} />
+              ))}
+            </div>
+          ) : visibleGreetings.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>💌</div>
+              <h3>Belum Ada Ucapan Publik</h3>
+              <p>Jadilah orang pertama yang mengirimkan ucapan dan doa terbaik untuk Pak Firdaus.</p>
+              <button
+                className={styles.btnSubmitWish}
+                onClick={() => setIsModalOpen(true)}
+              >
+                ✨ Kirim Ucapan Pertama
+              </button>
+            </div>
+          ) : (
+            <div className={styles.grid}>
+              {visibleGreetings.map((wish, i) => {
+                const initials = getInitials(wish.name);
+                const avatarGrad = getGradient(wish.name);
 
-              return (
-                <div
-                  key={wish.id}
-                  className={`${styles.wishCard} ${wish.isHighlight ? styles.wishHighlight : ''}`}
-                  style={{ animationDelay: `${i * 0.05}s` }}
-                  onClick={() => openWish(wish)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Buka ucapan dari ${wish.name}`}
-                >
-                  {/* Decorative top accent line */}
-                  <div className={styles.cardTopAccent} />
+                return (
+                  <div
+                    key={wish.id}
+                    className={`${styles.wishCard} ${wish.isHighlight ? styles.wishHighlight : ''}`}
+                    style={{ animationDelay: `${i * 0.05}s` }}
+                    onClick={() => openWish(wish)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Buka ucapan dari ${wish.name}`}
+                  >
+                    <div className={styles.cardTopAccent} />
+                    <div className={styles.quoteWatermark} aria-hidden="true">"</div>
 
-                  {/* Watermark Quote Icon */}
-                  <div className={styles.quoteWatermark} aria-hidden="true">
-                    "
-                  </div>
+                    <div className={styles.cardHeader}>
+                      <div
+                        className={styles.avatarCircle}
+                        style={{ background: avatarGrad }}
+                      >
+                        {wish.portraitSrc ? (
+                          <img
+                            src={wish.portraitSrc}
+                            alt={wish.name}
+                            className={styles.avatarImg}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span>{initials}</span>
+                        )}
+                      </div>
 
-                  <div className={styles.cardHeader}>
-                    {/* Avatar Circle */}
-                    <div
-                      className={styles.avatarCircle}
-                      style={{ background: avatarGrad }}
-                    >
-                      {wish.portraitSrc ? (
-                        <img
-                          src={wish.portraitSrc}
-                          alt={wish.name}
-                          className={styles.avatarImg}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <span>{initials}</span>
-                      )}
-                    </div>
-
-                    {/* Name & Company Badge */}
-                    <div className={styles.senderInfo}>
-                      <h3 className={styles.senderName}>{wish.name}</h3>
-                      <div className={styles.companyBadge}>
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-                          <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z" />
-                        </svg>
-                        <span className={styles.companyText}>{wish.role}</span>
+                      <div className={styles.senderInfo}>
+                        <h3 className={styles.senderName}>{wish.name}</h3>
+                        <div className={styles.companyBadge}>
+                          <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+                            <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z" />
+                          </svg>
+                          <span className={styles.companyText}>{wish.role}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Quote Body */}
-                  <p className={styles.cardMessage}>
-                    "{wish.quote.slice(0, 140)}{wish.quote.length > 140 ? '…' : ''}"
-                  </p>
+                    <p className={styles.cardMessage}>
+                      "{wish.quote.slice(0, 140)}{wish.quote.length > 140 ? '…' : ''}"
+                    </p>
 
-                  {/* Card Footer: Timestamp & Media indicator */}
-                  <div className={styles.cardFooter}>
-                    <div className={styles.footerGroupTag}>
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
-                      </svg>
-                      <span>{wish.group}</span>
+                    <div className={styles.cardFooter}>
+                      <div className={styles.footerGroupTag}>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                        </svg>
+                        <span>{wish.group}</span>
+                      </div>
+
+                      {wish.mediaType === 'video' && (
+                        <span className={styles.mediaTag}>▶ Video</span>
+                      )}
+                      {wish.mediaType === 'audio' && (
+                        <span className={styles.mediaTag}>♪ Audio</span>
+                      )}
                     </div>
-
-                    {wish.mediaType === 'video' && (
-                      <span className={styles.mediaTag}>▶ Video</span>
-                    )}
-                    {wish.mediaType === 'audio' && (
-                      <span className={styles.mediaTag}>♪ Audio</span>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Load More Button */}
           {hasMore && (
@@ -308,7 +361,7 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
         </div>
       </div>
 
-      {/* Greeting Form Modal (+ Kirim Ucapan Saya) */}
+      {/* Greeting Form Modal */}
       {isModalOpen && (
         <div
           className={styles.modalOverlay}
@@ -335,7 +388,10 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
             </div>
 
             <form onSubmit={handleFormSubmit} className={styles.modalForm}>
-              {/* Nama Lengkap */}
+              {formErrors.submit && (
+                <div className={styles.errorBanner}>{formErrors.submit}</div>
+              )}
+
               <div className={styles.formField}>
                 <label htmlFor="form-name">Nama Lengkap *</label>
                 <input
@@ -351,7 +407,6 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                 {formErrors.name && <span className={styles.errorText}>{formErrors.name}</span>}
               </div>
 
-              {/* Perusahaan / Jabatan */}
               <div className={styles.formField}>
                 <label htmlFor="form-company">Perusahaan / Jabatan *</label>
                 <select
@@ -374,7 +429,6 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                 )}
               </div>
 
-              {/* Custom Company Input */}
               {formCompanySelect === 'LAINNYA' && (
                 <div className={styles.formField}>
                   <label htmlFor="form-custom-company">Nama Perusahaan Manual *</label>
@@ -395,7 +449,6 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                 </div>
               )}
 
-              {/* Kelompok */}
               <div className={styles.formField}>
                 <label htmlFor="form-group">Kelompok *</label>
                 <select
@@ -410,7 +463,6 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                 </select>
               </div>
 
-              {/* Ucapan & Doa */}
               <div className={styles.formField}>
                 <label htmlFor="form-message">Ucapan & Doa Terbaik *</label>
                 <textarea
@@ -429,7 +481,6 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                 )}
               </div>
 
-              {/* Modal Buttons */}
               <div className={styles.modalActions}>
                 <button
                   type="button"
@@ -443,7 +494,7 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                   className={styles.btnSubmit}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Mengirim...' : 'Kirim Ucapan'}
+                  {isSubmitting ? 'Mengirim...' : 'Kirim Ucapan (Publik)'}
                 </button>
               </div>
             </form>
@@ -451,7 +502,7 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
         </div>
       )}
 
-      {/* Wish Detail Overlay Modal */}
+      {/* Detail Overlay */}
       {selectedWish && (
         <div
           className={styles.overlay}
@@ -493,7 +544,6 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
               <div className={styles.overlayRole}>{selectedWish.role}</div>
               <div className={styles.overlayGroupTag}>{selectedWish.group}</div>
 
-              {/* Video Player */}
               {selectedWish.mediaType === 'video' && selectedWish.mediaSrc && (
                 <video
                   ref={videoRef}
@@ -502,26 +552,18 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
                   controls
                   playsInline
                   autoPlay
-                  onError={(e) => {
-                    (e.target as HTMLVideoElement).style.display = 'none';
-                  }}
                 />
               )}
 
-              {/* Audio Player */}
               {selectedWish.mediaType === 'audio' && selectedWish.mediaSrc && (
                 <audio
                   src={selectedWish.mediaSrc}
                   className={styles.overlayAudio}
                   controls
                   autoPlay
-                  onError={(e) => {
-                    (e.target as HTMLAudioElement).style.display = 'none';
-                  }}
                 />
               )}
 
-              {/* Full Quote */}
               <blockquote className={styles.overlayQuote}>
                 "{selectedWish.quote}"
               </blockquote>
