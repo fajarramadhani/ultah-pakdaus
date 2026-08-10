@@ -17,8 +17,7 @@ export interface CreateWishInput {
   group_name: WishGroup;
 }
 
-const TABLE_PRIMARY = "birthday_wishes";
-const TABLE_SECONDARY = "birthday_wishes_firdaus";
+const TABLE_NAME = "birthday_wishes";
 
 /**
  * Convert Supabase record to Wish format
@@ -59,22 +58,15 @@ export async function getBirthdayWishes(): Promise<Wish[]> {
     return [];
   }
 
-  let { data, error } = await client
-    .from(TABLE_PRIMARY)
+  const { data, error } = await client
+    .from(TABLE_NAME)
     .select("*")
     .order("created_at", { ascending: false })
     .limit(300);
 
-  if (error || !data || data.length === 0) {
-    const fallback = await client
-      .from(TABLE_SECONDARY)
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(300);
-
-    if (!fallback.error && fallback.data) {
-      data = fallback.data;
-    }
+  if (error) {
+    console.error("Supabase fetch error:", error);
+    return [];
   }
 
   return (data || []).map((item) => formatSupabaseWish(item as SupabaseWish));
@@ -93,33 +85,18 @@ export async function createBirthdayWish(input: CreateWishInput): Promise<Wish> 
   const cleanCompany = `${input.company.trim()} (${input.group_name})`;
   const cleanMessage = input.message.trim();
 
-  const payload = {
-    name: cleanName,
-    company: cleanCompany,
-    message: cleanMessage,
-    group_name: input.group_name,
-  };
-
-  let { data, error } = await client
-    .from(TABLE_PRIMARY)
-    .insert({
-      name: cleanName,
-      company: cleanCompany,
-      message: cleanMessage,
-    })
+  // Insert standard fields (name, company, message) into birthday_wishes table
+  const { data, error } = await client
+    .from(TABLE_NAME)
+    .insert([
+      {
+        name: cleanName,
+        company: cleanCompany,
+        message: cleanMessage,
+      },
+    ])
     .select("*")
     .single();
-
-  if (error) {
-    const res = await client
-      .from(TABLE_SECONDARY)
-      .insert(payload)
-      .select("*")
-      .single();
-
-    data = res.data;
-    error = res.error;
-  }
 
   if (error) {
     console.error("Supabase insert error:", error);
@@ -140,14 +117,7 @@ export function subscribeToBirthdayWishes(onNewWish: (wish: Wish) => void): () =
     .channel("public-realtime-wishes")
     .on(
       "postgres_changes",
-      { event: "INSERT", schema: "public", table: TABLE_PRIMARY },
-      (payload) => {
-        if (payload.new) onNewWish(formatSupabaseWish(payload.new as SupabaseWish));
-      }
-    )
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: TABLE_SECONDARY },
+      { event: "INSERT", schema: "public", table: TABLE_NAME },
       (payload) => {
         if (payload.new) onNewWish(formatSupabaseWish(payload.new as SupabaseWish));
       }
