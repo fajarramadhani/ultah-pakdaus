@@ -1,0 +1,342 @@
+/* ============================================================
+   CHAPTER 7 VIDEO PERSEMBAHAN — Google Drive Video Section
+   ============================================================ */
+
+.chapter {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  background: linear-gradient(150deg, var(--obsidian) 0%, var(--emerald-deep) 60%, var(--obsidian) 100%);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.chapter.mounted {
+  opacity: 1;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(13, 43, 31, 0.75) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(201, 169, 110, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1.5rem, 5vw, 4rem) 5.5rem;
+  gap: 1.25rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  animation: fadeIn 0.8s ease forwards;
+}
+
+.badgePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 20px;
+  background: rgba(13, 43, 31, 0.8);
+  border: 1px solid rgba(201, 169, 110, 0.3);
+  color: var(--champagne);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.filmIcon {
+  font-size: 1rem;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3.5vw, 2.75rem);
+  font-weight: 800;
+  color: var(--ivory);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.subtitle {
+  font-family: var(--font-sans);
+  font-size: clamp(0.85rem, 1.3vw, 1.05rem);
+  font-weight: 300;
+  color: var(--ivory-dim);
+  max-width: 600px;
+}
+
+/* Video Player Box */
+.videoPlayerWrapper {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.videoFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  max-height: 55dvh;
+  background: #000;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+.iframePlayer {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.fallbackPlayer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #080c0a;
+}
+
+.localVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Action Bar */
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.btnDriveLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.4rem;
+  background: linear-gradient(135deg, var(--champagne-dark) 0%, var(--champagne-light) 100%);
+  color: var(--obsidian);
+  text-decoration: none;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btnDriveLink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(201, 169, 110, 0.45);
+}
+
+.btnEditLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: rgba(13, 43, 31, 0.8);
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  border-radius: 6px;
+  color: var(--champagne-light);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s;
+}
+
+.btnEditLink:hover {
+  background: rgba(26, 74, 50, 0.9);
+  border-color: rgba(201, 169, 110, 0.6);
+}
+
+/* Modal Form */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: rgba(8, 12, 10, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn 0.3s ease;
+}
+
+.modalContainer {
+  position: relative;
+  background: linear-gradient(160deg, rgba(13, 43, 31, 0.96) 0%, rgba(8, 12, 10, 0.98) 100%);
+  border: 1px solid rgba(201, 169, 110, 0.3);
+  border-radius: 12px;
+  max-width: 520px;
+  width: 100%;
+  padding: 2rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  animation: slideUp 0.35s ease;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(201, 169, 110, 0.15);
+}
+
+.modalTitleArea {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.modalIcon {
+  font-size: 1.25rem;
+}
+
+.modalTitleArea h3 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ivory);
+}
+
+.modalCloseBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.modalCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ivory);
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.formField label {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--champagne);
+  text-transform: uppercase;
+}
+
+.formField input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: rgba(8, 12, 10, 0.8);
+  border: 1px solid rgba(201, 169, 110, 0.25);
+  border-radius: 6px;
+  color: var(--ivory);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.formField input:focus {
+  outline: none;
+  border-color: var(--champagne);
+  box-shadow: 0 0 12px rgba(201, 169, 110, 0.3);
+}
+
+.helperText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btnCancel {
+  padding: 0.65rem 1.25rem;
+  background: transparent;
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.btnSave {
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(135deg, var(--champagne-dark) 0%, var(--champagne-light) 100%);
+  border: none;
+  border-radius: 6px;
+  color: var(--obsidian);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(2rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}

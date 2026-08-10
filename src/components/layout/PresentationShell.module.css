@@ -1,0 +1,15 @@
+.shell {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  background: var(--obsidian);
+  overflow: hidden;
+  user-select: none;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

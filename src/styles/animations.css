@@ -1,0 +1,133 @@
+/* ============================================================
+   ANIMATIONS — Cinematic Keyframes & Utilities
+   ============================================================ */
+
+/* ── Fade ────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(2rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-1.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Blur to Focus ───────────────────────────────────────── */
+@keyframes blurIn {
+  from { opacity: 0; filter: blur(20px); transform: scale(1.05); }
+  to   { opacity: 1; filter: blur(0);    transform: scale(1); }
+}
+
+/* ── Slow Zoom ───────────────────────────────────────────── */
+@keyframes slowZoom {
+  from { transform: scale(1); }
+  to   { transform: scale(1.06); }
+}
+
+/* ── Light Sweep ─────────────────────────────────────────── */
+@keyframes lightSweep {
+  0%   { transform: translateX(-100%) skewX(-15deg); opacity: 0; }
+  20%  { opacity: 0.4; }
+  80%  { opacity: 0.4; }
+  100% { transform: translateX(200%) skewX(-15deg); opacity: 0; }
+}
+
+/* ── Mask Reveal ─────────────────────────────────────────── */
+@keyframes maskReveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+/* ── Particle Float ──────────────────────────────────────── */
+@keyframes particleFloat {
+  0%   { transform: translateY(0) translateX(0) scale(1);    opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 0.8; }
+  100% { transform: translateY(-100vh) translateX(20px) scale(0.5); opacity: 0; }
+}
+
+@keyframes particleDrift {
+  0%   { transform: translateY(0) translateX(0); }
+  25%  { transform: translateY(-30px) translateX(15px); }
+  50%  { transform: translateY(-15px) translateX(-10px); }
+  75%  { transform: translateY(-45px) translateX(8px); }
+  100% { transform: translateY(0) translateX(0); }
+}
+
+/* ── Pulse Glow ──────────────────────────────────────────── */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* ── Text Stagger Helper ─────────────────────────────────── */
+.anim-stagger > * {
+  opacity: 0;
+  transform: translateY(1.5rem);
+}
+.anim-stagger.active > *:nth-child(1) { animation: fadeInUp 0.8s var(--ease-reveal) 0.1s forwards; }
+.anim-stagger.active > *:nth-child(2) { animation: fadeInUp 0.8s var(--ease-reveal) 0.3s forwards; }
+.anim-stagger.active > *:nth-child(3) { animation: fadeInUp 0.8s var(--ease-reveal) 0.5s forwards; }
+.anim-stagger.active > *:nth-child(4) { animation: fadeInUp 0.8s var(--ease-reveal) 0.7s forwards; }
+.anim-stagger.active > *:nth-child(5) { animation: fadeInUp 0.8s var(--ease-reveal) 0.9s forwards; }
+.anim-stagger.active > *:nth-child(6) { animation: fadeInUp 0.8s var(--ease-reveal) 1.1s forwards; }
+
+/* ── Chapter Transition ──────────────────────────────────── */
+@keyframes chapterFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes chapterFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.chapter-enter {
+  animation: chapterFadeIn 1.2s var(--ease-cinematic) forwards;
+}
+.chapter-exit {
+  animation: chapterFadeOut 0.8s var(--ease-luxury) forwards;
+}
+
+/* ── Monogram Shimmer ────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── Word Cycle ──────────────────────────────────────────── */
+@keyframes wordFadeIn {
+  0%   { opacity: 0; transform: translateY(0.5rem); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0);      filter: blur(0); }
+}
+
+@keyframes wordFadeOut {
+  0%   { opacity: 1; transform: translateY(0);       filter: blur(0); }
+  100% { opacity: 0; transform: translateY(-0.5rem); filter: blur(4px); }
+}
+
+/* ── Mosaic ──────────────────────────────────────────────── */
+@keyframes mosaicIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Gold Particle ───────────────────────────────────────── */
+@keyframes goldRise {
+  0%   { transform: translateY(0) translateX(var(--px, 0)) scale(1);    opacity: 0; }
+  5%   { opacity: 0.9; }
+  95%  { opacity: 0.5; }
+  100% { transform: translateY(-90vh) translateX(calc(var(--px, 0) * 1.5)) scale(0.3); opacity: 0; }
+}

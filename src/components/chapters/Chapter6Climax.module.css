@@ -1,0 +1,205 @@
+.chapter {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  background: radial-gradient(ellipse 90% 90% at 50% 50%, var(--emerald-deep) 0%, var(--obsidian) 80%);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+.chapter.mounted {
+  opacity: 1;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(201,169,110,0.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--chapter-padding);
+}
+
+/* Mosaic Grid */
+.mosaicArea {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.35;
+  transition: opacity 1.5s ease, transform 1.5s ease;
+}
+
+.mosaicFormed {
+  opacity: 0.15;
+  transform: scale(1.08);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 8px;
+  width: min(90vw, 900px);
+  height: min(70vh, 500px);
+}
+
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+  }
+}
+
+.tile {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(26, 74, 50, 0.4);
+  border: 1px solid rgba(201, 169, 110, 0.15);
+  animation: mosaicIn 0.8s ease both;
+}
+
+@keyframes mosaicIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.tileImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tileFallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  color: var(--champagne);
+}
+
+.overlayMonogram {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.monogramText {
+  font-family: var(--font-serif);
+  font-size: clamp(8rem, 22vw, 20rem);
+  font-weight: 900;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(201, 169, 110, 0.3);
+  letter-spacing: 0.05em;
+}
+
+/* Text Container */
+.textContainer {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  max-width: 900px;
+}
+
+.subtextFade {
+  animation: fadeIn 1s ease both;
+}
+
+.leadText {
+  font-family: var(--font-accent);
+  font-size: clamp(1.25rem, 3.5vw, 2.25rem);
+  font-style: italic;
+  color: var(--ivory-dim);
+  letter-spacing: 0.05em;
+}
+
+.climaxTextFade {
+  animation: blurIn 1.2s var(--ease-reveal) both;
+}
+
+.climaxHeadline {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  font-weight: 700;
+  color: var(--ivory);
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--ivory) 30%, var(--champagne-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cheerFade {
+  animation: fadeInUp 1.2s var(--ease-reveal) both;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cheerLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--champagne);
+}
+
+.cheerHeadline {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 7.5vw, 6rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--ivory);
+  letter-spacing: -0.02em;
+}
+
+.cheerHeadline span {
+  color: var(--champagne-light);
+  display: block;
+  text-shadow: 0 0 40px rgba(201, 169, 110, 0.4);
+}
+
+.cheerAge {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-style: italic;
+  color: var(--amber-warm);
+  margin-top: 0.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes blurIn {
+  from { opacity: 0; filter: blur(15px); transform: scale(0.95); }
+  to   { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(2rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}

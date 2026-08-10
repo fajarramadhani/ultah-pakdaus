@@ -1,0 +1,22 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.particle {
+  position: absolute;
+  bottom: -10px;
+  border-radius: 50%;
+  animation: goldRise linear infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes goldRise {
+  0%   { transform: translateY(0) translateX(0) scale(1);                             opacity: 0; }
+  5%   { opacity: 0.9; }
+  95%  { opacity: 0.4; }
+  100% { transform: translateY(-100vh) translateX(var(--px, 0)) scale(0.3); opacity: 0; }
+}
