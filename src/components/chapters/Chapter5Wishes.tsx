@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from './Chapter5Wishes.module.css';
-import { ALL_GROUPS, type WishGroup, type Wish } from '../../config/wishes.data';
+import { type WishGroup, type Wish } from '../../config/wishes.data';
 import { getBirthdayWishes, createBirthdayWish, subscribeToBirthdayWishes } from '../../services/birthday-wishes';
 
 interface Chapter5WishesProps {
@@ -48,7 +48,6 @@ function getGradient(name: string): string {
 export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapter5WishesProps) {
   const [wishesList, setWishesList] = useState<Wish[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeGroup, setActiveGroup] = useState<WishGroup | 'Semua'>('Semua');
   const [visibleCount, setVisibleCount] = useState<number>(ITEMS_PER_PAGE);
   const [selectedWish, setSelectedWish] = useState<Wish | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,11 +93,7 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
     return () => unsubscribe();
   }, []);
 
-  const filteredWishes =
-    activeGroup === 'Semua'
-      ? wishesList
-      : wishesList.filter((w) => w.group === activeGroup);
-
+  const filteredWishes = wishesList;
   const visibleGreetings = filteredWishes.slice(0, visibleCount);
   const hasMore = visibleCount < filteredWishes.length;
 
@@ -194,65 +189,21 @@ export default function Chapter5Wishes({ onOverlayOpen, onOverlayClose }: Chapte
               <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-              <span>Kumpulan Doa & Harapan (Live Database)</span>
+              <span>Kumpulan Doa & Harapan</span>
             </div>
 
-            <div className={styles.headerActions}>
-              <a
-                href="#/ucapan"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.btnPublicLink}
-                title="Buka Halaman Ucapan Publik Terpisah"
-              >
-                <span>🔗 Link Publik Ucapan</span>
-              </a>
-
-              <button
-                className={styles.btnSubmitWish}
-                onClick={() => setIsModalOpen(true)}
-              >
-                <span>✨ Kirim Ucapan Saya</span>
-              </button>
-            </div>
+            <button
+              className={styles.btnSubmitWish}
+              onClick={() => setIsModalOpen(true)}
+            >
+              <span>✨ Kirim Ucapan Saya</span>
+            </button>
           </div>
 
           <h2 className={styles.title}>Ucapan dan Doa Terbaik</h2>
           <p className={styles.subtitle}>
             Kumpulan ucapan real-time dari keluarga besar dan publik untuk Bapak Muhammad Firdaus.
           </p>
-        </div>
-
-        {/* Group Filter Tabs */}
-        <div className={styles.filters} role="tablist" aria-label="Filter kelompok ucapan">
-          <button
-            role="tab"
-            aria-selected={activeGroup === 'Semua'}
-            className={`${styles.filterBtn} ${activeGroup === 'Semua' ? styles.filterActive : ''}`}
-            onClick={() => {
-              setActiveGroup('Semua');
-              setVisibleCount(ITEMS_PER_PAGE);
-            }}
-          >
-            Semua ({wishesList.length})
-          </button>
-          {ALL_GROUPS.map((g) => {
-            const count = wishesList.filter((w) => w.group === g).length;
-            return (
-              <button
-                key={g}
-                role="tab"
-                aria-selected={activeGroup === g}
-                className={`${styles.filterBtn} ${activeGroup === g ? styles.filterActive : ''}`}
-                onClick={() => {
-                  setActiveGroup(g);
-                  setVisibleCount(ITEMS_PER_PAGE);
-                }}
-              >
-                {g} {count > 0 ? `(${count})` : ''}
-              </button>
-            );
-          })}
         </div>
 
         {/* Wishes Grid */}

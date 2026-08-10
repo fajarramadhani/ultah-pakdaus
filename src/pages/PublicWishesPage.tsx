@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import styles from './PublicWishesPage.module.css';
-import { ALL_GROUPS, type WishGroup, type Wish } from '../config/wishes.data';
+import { type WishGroup, type Wish } from '../config/wishes.data';
 import { getBirthdayWishes, createBirthdayWish, subscribeToBirthdayWishes } from '../services/birthday-wishes';
 
 const ITEMS_PER_PAGE = 9;
@@ -43,7 +43,6 @@ function getGradient(name: string): string {
 export default function PublicWishesPage() {
   const [wishesList, setWishesList] = useState<Wish[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeGroup, setActiveGroup] = useState<WishGroup | 'Semua'>('Semua');
   const [visibleCount, setVisibleCount] = useState<number>(ITEMS_PER_PAGE);
   const [selectedWish, setSelectedWish] = useState<Wish | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -85,10 +84,7 @@ export default function PublicWishesPage() {
     return () => unsubscribe();
   }, []);
 
-  const filteredWishes =
-    activeGroup === 'Semua'
-      ? wishesList
-      : wishesList.filter((w) => w.group === activeGroup);
+  const filteredWishes = wishesList;
 
   const visibleGreetings = filteredWishes.slice(0, visibleCount);
   const hasMore = visibleCount < filteredWishes.length;
@@ -210,34 +206,6 @@ export default function PublicWishesPage() {
               <span>✨ Kirim Ucapan Saya</span>
             </button>
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className={styles.filtersArea}>
-          <button
-            className={`${styles.filterBtn} ${activeGroup === 'Semua' ? styles.filterActive : ''}`}
-            onClick={() => {
-              setActiveGroup('Semua');
-              setVisibleCount(ITEMS_PER_PAGE);
-            }}
-          >
-            Semua ({wishesList.length})
-          </button>
-          {ALL_GROUPS.map((g) => {
-            const count = wishesList.filter((w) => w.group === g).length;
-            return (
-              <button
-                key={g}
-                className={`${styles.filterBtn} ${activeGroup === g ? styles.filterActive : ''}`}
-                onClick={() => {
-                  setActiveGroup(g);
-                  setVisibleCount(ITEMS_PER_PAGE);
-                }}
-              >
-                {g} {count > 0 ? `(${count})` : ''}
-              </button>
-            );
-          })}
         </div>
 
         {/* Wishes Grid */}
